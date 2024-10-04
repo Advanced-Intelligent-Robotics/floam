@@ -2,7 +2,7 @@
 <launch>
 
     <!-- launch your velodyne here -->
-    <include file="$(find velodyne_pointcloud)/launch/VLP16_points.launch"/>
+    <!-- <include file="$(find velodyne_pointcloud)/launch/VLP16_points.launch"/> -->
     
     <!-- For Velodyne VLP-16 -->
     <param name="scan_line" value="16" />
@@ -17,20 +17,21 @@
     -->
 
     <!--- Sim Time -->
-    <param name="scan_period" value="0.1" />
+    <param name="scan_period" value="0.05" />
 
     <param name="vertical_angle" type="double" value="2.0" />
     <param name="map_resolution" type="double" value="0.2" />
     <param name="max_dis" type="double" value="90.0" />
     <param name="min_dis" type="double" value="0.5" />
     <!--- -->
+    <remap from="/velodyne_points" to="/cloud_all_fields_fullframe" />
     <node pkg="floam" type="floam_odom_estimation_node" name="floam_odom_estimation_node" output="screen"/>
     <node pkg="floam" type="floam_laser_processing_node" name="floam_laser_processing_node" output="screen"/>
-    <node pkg="floam" type="floam_laser_mapping_node" name="floam_laser_mapping_node" output="screen"/>
+    <!-- <node pkg="floam" type="floam_laser_mapping_node" name="floam_laser_mapping_node" output="screen"/> -->
 
-    <node pkg="tf" type="static_transform_publisher" name="word2map_tf"  args="0 0 0 0 0 0 /world /map 10" />
+    <!-- <node pkg="tf" type="static_transform_publisher" name="word2map_tf"  args="0 0 0 0 0 0 /world /map 10" /> -->
     
-    <arg name="rviz" default="true" />
+    <arg name="rviz" default="false" />
     <group if="$(arg rviz)">
         <node launch-prefix="nice" pkg="rviz" type="rviz" name="rviz" args="-d $(find floam)/rviz/floam_velodyne.rviz" />
     </group>

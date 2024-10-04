@@ -13,8 +13,10 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   rosbag
   std_msgs
-  tf
+  tf2
+  tf2_ros
   eigen_conversions
+  pcl_ros
 )
 
 find_package(Eigen3)

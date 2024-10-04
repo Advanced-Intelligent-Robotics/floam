@@ -14,9 +14,12 @@
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <nav_msgs/Odometry.h>
-#include <tf/transform_datatypes.h>
-#include <tf/transform_broadcaster.h>
-
+// #include <tf/transform_datatypes.h>
+// #include <tf/transform_broadcaster.h>
+#include <tf2/LinearMath/Quaternion.h>
+#include <tf2_ros/transform_broadcaster.h>
+#include <tf2/LinearMath/Quaternion.h>
+#include <geometry_msgs/TransformStamped.h>
 //pcl lib
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl/point_cloud.h>
@@ -31,6 +34,8 @@ std::mutex mutex_lock;
 std::queue<sensor_msgs::PointCloud2ConstPtr> pointCloudEdgeBuf;
 std::queue<sensor_msgs::PointCloud2ConstPtr> pointCloudSurfBuf;
 lidar::Lidar lidar_param;
+std::string base_frame_ = "base_footprint";
+std::string odom_frame_ = "odom";
 
 ros::Publisher pubLaserOdometry;
 void velodyneSurfHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg)
@@ -101,17 +106,25 @@ void odom_estimation(){
             //q_current.normalize();
             Eigen::Vector3d t_current = odomEstimation.odom.translation();
 
-            static tf::TransformBroadcaster br;
-            tf::Transform transform;
-            transform.setOrigin( tf::Vector3(t_current.x(), t_current.y(), t_current.z()) );
-            tf::Quaternion q(q_current.x(),q_current.y(),q_current.z(),q_current.w());
-            transform.setRotation(q);
-            br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "map", "base_link"));
+            static tf2_ros::TransformBroadcaster br;
+            geometry_msgs::TransformStamped transformStamped;
+            transformStamped.header.stamp = ros::Time::now();
+            transformStamped.header.frame_id = odom_frame_;
+            transformStamped.child_frame_id = base_frame_;
+            transformStamped.transform.translation.x = t_current.x();
+            transformStamped.transform.translation.y = t_current.y();
+            transformStamped.transform.translation.z = t_current.z();
+            tf2::Quaternion q(q_current.x(),q_current.y(),q_current.z(),q_current.w());
+            transformStamped.transform.rotation.x = q.x();
+            transformStamped.transform.rotation.y = q.y();
+            transformStamped.transform.rotation.z = q.z();
+            transformStamped.transform.rotation.w = q.w();
+            br.sendTransform(transformStamped);
 
             // publish odometry
             nav_msgs::Odometry laserOdometry;
-            laserOdometry.header.frame_id = "map";
-            laserOdometry.child_frame_id = "base_link";
+            laserOdometry.header.frame_id = odom_frame_;
+            laserOdometry.child_frame_id = base_frame_;
             laserOdometry.header.stamp = pointcloud_time;
             laserOdometry.pose.pose.orientation.x = q_current.x();
             laserOdometry.pose.pose.orientation.y = q_current.y();
