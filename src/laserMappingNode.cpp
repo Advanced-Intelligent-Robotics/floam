@@ -56,8 +56,11 @@ class MappingNode{
   std::string base_frame_;
   std::string odom_frame_;
   double map_resolution_;
+  double map_pub_rate_;
 
   // misc
+  double map_pub_period_;
+  ros::Time prev_map_pub_time_ = ros::Time(0);
 
   public:
   MappingNode(ros::NodeHandle* nh, ros::NodeHandle* private_nh)
@@ -67,6 +70,7 @@ class MappingNode{
 
     // 1. initialize param
     initParam();
+    map_pub_period_ = 1.0/map_pub_rate_;
     laserMapping_.init(map_resolution_);
 
     // 2. setup subscriber
@@ -74,7 +78,7 @@ class MappingNode{
     subOdometry_ = nh_->subscribe<nav_msgs::Odometry>("odom", 100, &MappingNode::odom_cb,this);
 
     // 3. setup publisher
-    map_pub_ = nh_->advertise<sensor_msgs::PointCloud2>("map", 100);
+    map_pub_ = nh_->advertise<sensor_msgs::PointCloud2>("loam_map", 100);
 
     // 4. start process thread
     process_thread_ = std::thread(&MappingNode::process,this);
@@ -101,9 +105,10 @@ class MappingNode{
     vertical_angle_ = private_nh_->param("vertical_angle",2.0); // this variable seems like not used
     max_dis_ = private_nh_->param("max_dis",60.0);
     min_dis_ = private_nh_->param("min_dis", 2.0);
-    base_frame_ = private_nh_->param("base_frame",(std::string)"base_footprint");
-    odom_frame_ = private_nh_->param("odom_frame",(std::string)"odom");
+    base_frame_ = private_nh_->param<std::string>("base_frame","base_footprint");
+    odom_frame_ = private_nh_->param<std::string>("odom_frame","odom");
     map_resolution_ = private_nh_->param("map_resolution",0.4);
+    map_pub_rate_ = private_nh_->param("map_pub_rate",1.0);
     
     lidar_param_.setScanPeriod(scan_period_);
     lidar_param_.setVerticalAngle(vertical_angle_);
@@ -119,6 +124,7 @@ class MappingNode{
     ROS_INFO_STREAM("[MappingNode] base_frame is set to: "<< base_frame_);
     ROS_INFO_STREAM("[MappingNode] odom_frame is set to: "<< odom_frame_);
     ROS_INFO_STREAM("[MappingNode] map_resolution is set to: "<< map_resolution_);
+    ROS_INFO_STREAM("[MappingNode] map_pub_rate is set to: "<< map_pub_rate_);
   }
 
   void process()
@@ -156,12 +162,16 @@ class MappingNode{
         
         laserMapping_.updateCurrentPointsToMap(pointcloud_in,current_pose);
 
-        pcl::PointCloud<pcl::PointXYZI>::Ptr pc_map = laserMapping_.getMap();
-        sensor_msgs::PointCloud2 PointsMsg;
-        pcl::toROSMsg(*pc_map, PointsMsg);
-        PointsMsg.header.stamp = pointcloud_time;
-        PointsMsg.header.frame_id = odom_frame_;
-        map_pub_.publish(PointsMsg); 
+        if((ros::Time::now() - prev_map_pub_time_).toSec() > map_pub_period_)
+        {
+          pcl::PointCloud<pcl::PointXYZI>::Ptr pc_map = laserMapping_.getMap();
+          sensor_msgs::PointCloud2 PointsMsg;
+          pcl::toROSMsg(*pc_map, PointsMsg);
+          PointsMsg.header.stamp = pointcloud_time;
+          PointsMsg.header.frame_id = odom_frame_;
+          map_pub_.publish(PointsMsg);
+          prev_map_pub_time_ = ros::Time::now(); 
+        }
     }
       //sleep 2 ms every time
       std::chrono::milliseconds dura(2);

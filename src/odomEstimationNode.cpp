@@ -166,7 +166,7 @@ class OdomEstimationNode{
           total_frame_++;
           float time_temp = elapsed_seconds.count() * 1000;
           total_time_+=time_temp;
-          ROS_DEBUG("average odom estimation time %f ms \n \n", total_time_/total_frame_);
+          ROS_INFO("average odom estimation time %f ms \n \n", total_time_/total_frame_);
         }
 
         Eigen::Quaterniond q_current(odomEstimation_.odom.rotation());
