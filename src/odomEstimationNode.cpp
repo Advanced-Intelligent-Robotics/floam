@@ -6,7 +6,8 @@
 #include <cmath>
 #include <vector>
 #include <mutex>
-#include <queue>
+// #include <queue>
+#include <deque>
 #include <thread>
 #include <chrono>
 
@@ -43,8 +44,8 @@ class OdomEstimationNode{
   ros::Publisher pubLaserOdometry;
 
   //
-  std::queue<sensor_msgs::PointCloud2ConstPtr> pointCloudEdgeBuf_;
-  std::queue<sensor_msgs::PointCloud2ConstPtr> pointCloudSurfBuf_;
+  std::deque<sensor_msgs::PointCloud2ConstPtr> pointCloudEdgeBuf_;
+  std::deque<sensor_msgs::PointCloud2ConstPtr> pointCloudSurfBuf_;
   std::thread process_thread_; //process thread
   lidar::Lidar lidar_param_;
   OdomEstimationClass odomEstimation_;
@@ -64,6 +65,7 @@ class OdomEstimationNode{
   bool is_odom_inited_ = false;
   double total_time_ = 0;
   int total_frame_ = 0;
+  const size_t maxQueueSize = 5;
 
   public:
   OdomEstimationNode(ros::NodeHandle* nh, ros::NodeHandle* private_nh)
@@ -76,11 +78,11 @@ class OdomEstimationNode{
     odomEstimation_.init(lidar_param_, map_resolution_);
 
     // 2. setup subscriber
-    subEdgeLaserCloud_ = nh_->subscribe<sensor_msgs::PointCloud2>("cloud_edge", 100, &OdomEstimationNode::cloud_edge_cb,this);
-    subSurfLaserCloud_ = nh_->subscribe<sensor_msgs::PointCloud2>("cloud_surf", 100, &OdomEstimationNode::cloud_surf_cb,this);
+    subEdgeLaserCloud_ = nh_->subscribe<sensor_msgs::PointCloud2>("cloud_edge", 2, &OdomEstimationNode::cloud_edge_cb,this);
+    subSurfLaserCloud_ = nh_->subscribe<sensor_msgs::PointCloud2>("cloud_surf", 2, &OdomEstimationNode::cloud_surf_cb,this);
     
     // 3. setup publisher
-    pubLaserOdometry = nh_->advertise<nav_msgs::Odometry>("odom", 100);
+    pubLaserOdometry = nh_->advertise<nav_msgs::Odometry>("odom", 10);
 
     // 4. start process thread
     process_thread_ = std::thread(&OdomEstimationNode::process,this);
@@ -88,13 +90,15 @@ class OdomEstimationNode{
   void cloud_edge_cb(const sensor_msgs::PointCloud2ConstPtr &msg)
   {
     mtx.lock();
-    pointCloudEdgeBuf_.push(msg);
+    while ( pointCloudEdgeBuf_.size() > maxQueueSize ) pointCloudEdgeBuf_.pop_front();
+    pointCloudEdgeBuf_.push_back(msg);
     mtx.unlock();   
   }
   void cloud_surf_cb(const sensor_msgs::PointCloud2ConstPtr &msg)
   {
     mtx.lock();
-    pointCloudSurfBuf_.push(msg);
+    while (pointCloudSurfBuf_.size() > maxQueueSize ) pointCloudSurfBuf_.pop_front();
+    pointCloudSurfBuf_.push_back(msg);
     mtx.unlock();   
   }
   void initParam()
@@ -134,13 +138,13 @@ class OdomEstimationNode{
         //read data
         mtx.lock();
         if(!pointCloudSurfBuf_.empty() && (pointCloudSurfBuf_.front()->header.stamp.toSec()<pointCloudEdgeBuf_.front()->header.stamp.toSec()-0.5*lidar_param_.scan_period)){
-          pointCloudSurfBuf_.pop();
+          pointCloudSurfBuf_.pop_front();
           ROS_WARN_ONCE("time stamp unaligned with extra point cloud, pls check your data --> odom correction");
           mtx.unlock();
           continue;  
         }
         if(!pointCloudEdgeBuf_.empty() && (pointCloudEdgeBuf_.front()->header.stamp.toSec()<pointCloudSurfBuf_.front()->header.stamp.toSec()-0.5*lidar_param_.scan_period)){
-          pointCloudEdgeBuf_.pop();
+          pointCloudEdgeBuf_.pop_front();
           ROS_WARN_ONCE("time stamp unaligned with extra point cloud, pls check your data --> odom correction");
           mtx.unlock();
           continue;  
@@ -152,8 +156,8 @@ class OdomEstimationNode{
         pcl::fromROSMsg(*pointCloudEdgeBuf_.front(), *pointcloud_edge_in);
         pcl::fromROSMsg(*pointCloudSurfBuf_.front(), *pointcloud_surf_in);
         ros::Time pointcloud_time = (pointCloudSurfBuf_.front())->header.stamp;
-        pointCloudEdgeBuf_.pop();
-        pointCloudSurfBuf_.pop();
+        pointCloudEdgeBuf_.pop_front();
+        pointCloudSurfBuf_.pop_front();
         mtx.unlock();
 
         if(is_odom_inited_ == false){

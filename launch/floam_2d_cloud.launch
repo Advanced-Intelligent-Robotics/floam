@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<launch>
+    <!-- launch floam_laser_processing node -->
+  <node pkg="floam" type="floam_laser_processing_node" name="floam_laser_processing_node" output="screen">
+    <remap from="cloud" to="/cloud_multi" />
+    <rosparam file="$(find floam)/param/2d_lidar.yaml" />
+  </node>
+  <node pkg="floam" type="floam_odom_estimation_node" name="floam_odom_estimation_node" output="screen">
+    <remap from="odom" to="/floam_odom" />
+    <rosparam file="$(find floam)/param/2d_lidar.yaml" />
+  </node>
+  <!-- <node pkg="floam" type="floam_laser_mapping_node" name="floam_laser_mapping_node" output="screen">
+    <remap from="odom" to="/floam_odom" />
+    <rosparam file="$(find floam)/param/2d_lidar.yaml" />
+  </node> -->
+</launch>

@@ -1,6 +1,6 @@
 scan_period: 0.05
 vertical_angle: 2.0
-map_resolution: 0.2
+map_resolution: 0.1
 max_dis: 90.0
 min_dis: 0.1
 base_frame: base_footprint

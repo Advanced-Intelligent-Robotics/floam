@@ -6,7 +6,8 @@
 #include <cmath>
 #include <vector>
 #include <mutex>
-#include <queue>
+// #include <queue>
+#include <deque>
 #include <thread>
 #include <chrono>
 #include <memory>
@@ -51,7 +52,7 @@ class LaserProcessingNode{
   std::shared_ptr<tf2_ros::TransformListener> tf_listener_; // helper to subscribe to tf tree
 
   //
-  std::queue<sensor_msgs::PointCloud2> pointCloudBuf_; // PointCloud2 Buffer
+  std::deque<sensor_msgs::PointCloud2> pointCloudBuf_; // PointCloud2 Buffer
   std::thread process_thread_; //process thread
   lidar::Lidar lidar_param_;
   LaserProcessingClass laserProcessing;
@@ -68,6 +69,7 @@ class LaserProcessingNode{
   // misc
   double total_time_ = 0;
   int total_frame_ = 0;
+  const size_t maxQueueSize = 5;
 
   public:
   LaserProcessingNode(ros::NodeHandle* nh, ros::NodeHandle* private_nh)
@@ -82,12 +84,12 @@ class LaserProcessingNode{
     initParam();
 
     // 2. setup subscriber
-    subLaserCloud_ = nh_->subscribe<sensor_msgs::PointCloud2>("cloud", 100, &LaserProcessingNode::cloud_cb,this);
+    subLaserCloud_ = nh_->subscribe<sensor_msgs::PointCloud2>("cloud", 10, &LaserProcessingNode::cloud_cb,this);
     
     // 3. setup publisher
-    pubLaserCloudFiltered_ = nh_->advertise<sensor_msgs::PointCloud2>("cloud_filtered", 100);
-    pubEdgePoints_ = nh_->advertise<sensor_msgs::PointCloud2>("cloud_edge", 100);
-    pubSurfPoints_ = nh_->advertise<sensor_msgs::PointCloud2>("cloud_surf", 100); 
+    pubLaserCloudFiltered_ = nh_->advertise<sensor_msgs::PointCloud2>("cloud_filtered", 10);
+    pubEdgePoints_ = nh_->advertise<sensor_msgs::PointCloud2>("cloud_edge", 10);
+    pubSurfPoints_ = nh_->advertise<sensor_msgs::PointCloud2>("cloud_surf", 10); 
 
     // 4. start process thread
     process_thread_ = std::thread(&LaserProcessingNode::process,this);
@@ -100,9 +102,13 @@ class LaserProcessingNode{
       if (field.name == "i") {
           field.name = "intensity";  // Remap 'i' to 'intensity'
       }
+      else if (field.name == "distances") {
+          field.name = "intensity";  // Remap 'i' to 'intensity'
+      }
     }
     mtx.lock();
-    pointCloudBuf_.push(cloud_copy); // push incoming pointcloud into buffer to be processed later
+    while(pointCloudBuf_.size() > maxQueueSize) pointCloudBuf_.pop_front();
+    pointCloudBuf_.push_back(cloud_copy);
     mtx.unlock();   
   }
   void initParam()
@@ -143,7 +149,7 @@ class LaserProcessingNode{
         mtx.lock(); //acquire lock
         pcl::fromROSMsg(pointCloudBuf_.front(), *pointcloud_raw);
         ros::Time pointcloud_time = (pointCloudBuf_.front()).header.stamp;
-        pointCloudBuf_.pop();
+        pointCloudBuf_.pop_front();
         mtx.unlock(); //release lock
 
         // 2. transform the pointcloud to base_frame
