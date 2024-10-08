@@ -58,6 +58,7 @@ class OdomEstimationNode{
   std::string base_frame_;
   std::string odom_frame_;
   double map_resolution_;
+  bool publish_tf_;
 
   // misc
   bool is_odom_inited_ = false;
@@ -106,6 +107,7 @@ class OdomEstimationNode{
     base_frame_ = private_nh_->param("base_frame",(std::string)"base_footprint");
     odom_frame_ = private_nh_->param("odom_frame",(std::string)"odom");
     map_resolution_ = private_nh_->param("map_resolution",0.4);
+    publish_tf_ = private_nh_->param("publish_tf",false);
     
     lidar_param_.setScanPeriod(scan_period_);
     lidar_param_.setVerticalAngle(vertical_angle_);
@@ -121,6 +123,7 @@ class OdomEstimationNode{
     ROS_INFO_STREAM("[OdomEstimationNode] base_frame is set to: "<< base_frame_);
     ROS_INFO_STREAM("[OdomEstimationNode] odom_frame is set to: "<< odom_frame_);
     ROS_INFO_STREAM("[OdomEstimationNode] map_resolution is set to: "<< map_resolution_);
+    ROS_INFO_STREAM("[OdomEstimationNode] publish_tf is set to: "<< publish_tf_);
   }
 
   void process()
@@ -173,20 +176,22 @@ class OdomEstimationNode{
         //q_current.normalize();
         Eigen::Vector3d t_current = odomEstimation_.odom.translation();
 
-        static tf2_ros::TransformBroadcaster br;
-        geometry_msgs::TransformStamped transformStamped;
-        transformStamped.header.stamp = ros::Time::now();
-        transformStamped.header.frame_id = odom_frame_;
-        transformStamped.child_frame_id = base_frame_;
-        transformStamped.transform.translation.x = t_current.x();
-        transformStamped.transform.translation.y = t_current.y();
-        transformStamped.transform.translation.z = t_current.z();
-        tf2::Quaternion q(q_current.x(),q_current.y(),q_current.z(),q_current.w());
-        transformStamped.transform.rotation.x = q.x();
-        transformStamped.transform.rotation.y = q.y();
-        transformStamped.transform.rotation.z = q.z();
-        transformStamped.transform.rotation.w = q.w();
-        br.sendTransform(transformStamped);
+        if(publish_tf_){
+          static tf2_ros::TransformBroadcaster br;
+          geometry_msgs::TransformStamped transformStamped;
+          transformStamped.header.stamp = ros::Time::now();
+          transformStamped.header.frame_id = odom_frame_;
+          transformStamped.child_frame_id = base_frame_;
+          transformStamped.transform.translation.x = t_current.x();
+          transformStamped.transform.translation.y = t_current.y();
+          transformStamped.transform.translation.z = t_current.z();
+          tf2::Quaternion q(q_current.x(),q_current.y(),q_current.z(),q_current.w());
+          transformStamped.transform.rotation.x = q.x();
+          transformStamped.transform.rotation.y = q.y();
+          transformStamped.transform.rotation.z = q.z();
+          transformStamped.transform.rotation.w = q.w();
+          br.sendTransform(transformStamped);
+        }
 
         // publish odometry
         nav_msgs::Odometry laserOdometry;
