@@ -2,7 +2,7 @@
 // Email wh200720041@gmail.com
 // Homepage https://wanghan.pro
 
-#include "odomEstimationClass.h"
+#include "odomEstimation.h"
 
 void OdomEstimationClass::init(lidar::Lidar lidar_param, double map_resolution){
   //init local map
@@ -45,16 +45,8 @@ void OdomEstimationClass::updatePointsToMap(const pcl::PointCloud<pcl::PointXYZI
   downSamplingToMap(edge_in,downsampledEdgeCloud,surf_in,downsampledSurfCloud);
   //ROS_WARN("point nyum%d,%d",(int)downsampledEdgeCloud->points.size(), (int)downsampledSurfCloud->points.size());
   if(laserCloudCornerMap->points.size()>10 && laserCloudSurfMap->points.size()>50){
-    if(laserCloudCornerMap->points.size()>201)
-    {
-      int i = laserCloudCornerMap->points.size() - 200;
-      laserCloudCornerMap->points.erase(laserCloudCornerMap->points.begin(),laserCloudCornerMap->points.begin()+i);
-    }
     kdtreeEdgeMap->setInputCloud(laserCloudCornerMap);
     kdtreeSurfMap->setInputCloud(laserCloudSurfMap);
-    ROS_INFO_STREAM("kdtree edge map size: "<< laserCloudCornerMap->size());
-    ROS_INFO_STREAM("kdtree edge map size: "<< laserCloudCornerMap->points.size());
-    ROS_INFO_STREAM("kdtree surf map size: "<< laserCloudSurfMap->size());
     for (int iterCount = 0; iterCount < optimization_count; iterCount++){
         ceres::LossFunction *loss_function = new ceres::HuberLoss(0.1);
         ceres::Problem::Options problem_options;
@@ -219,14 +211,12 @@ void OdomEstimationClass::addPointsToMap(const pcl::PointCloud<pcl::PointXYZI>::
     pointAssociateToMap(&downsampledEdgeCloud->points[i], &point_temp);
     laserCloudCornerMap->push_back(point_temp); 
   }
-  ROS_INFO_STREAM("cloud edge map size: "<< laserCloudSurfMap->size());
   for (int i = 0; i < (int)downsampledSurfCloud->points.size(); i++)
   {
     pcl::PointXYZI point_temp;
     pointAssociateToMap(&downsampledSurfCloud->points[i], &point_temp);
     laserCloudSurfMap->push_back(point_temp);
   }
-  ROS_INFO_STREAM("cloud surf map size: "<< laserCloudSurfMap->size());
   
   double x_min = +odom.translation().x()-100;
   double y_min = +odom.translation().y()-100;

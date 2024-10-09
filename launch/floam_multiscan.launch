@@ -4,18 +4,10 @@
 
     
     <!-- launch floam_laser_processing node -->
-    <node pkg="floam" type="floam_laser_processing_node" name="floam_laser_processing_node" output="screen">
-      <remap from="cloud" to="/cloud_all_fields_fullframe" />
-      <rosparam file="$(find floam)/param/multiscan.yaml" />
-    </node>
-    <node pkg="floam" type="floam_odom_estimation_node" name="floam_odom_estimation_node" output="screen">
+    <node pkg="floam" type="floam_node" name="floam_node" output="screen">
+      <!-- <remap from="cloud" to="/cloud_all_fields_fullframe" /> -->
+      <remap from="cloud" to="/velodyne_points" />
       <remap from="odom" to="/floam_odom" />
       <rosparam file="$(find floam)/param/multiscan.yaml" />
     </node>
-    <node pkg="floam" type="floam_laser_mapping_node" name="floam_laser_mapping_node" output="screen">
-      <remap from="odom" to="/floam_odom" />
-      <rosparam file="$(find floam)/param/multiscan.yaml" />
-    </node>
-
-    <!-- <node pkg="tf" type="static_transform_publisher" name="word2map_tf"  args="0 0 0 0 0 0 /map /odom 10" /> -->
 </launch>
