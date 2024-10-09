@@ -1,7 +1,7 @@
 #include "laserProcessingROS.h"
 #include "odomEstimationROS.h"
 #include "laserMappingROS.h"
-#include "utils.h"
+#include "floam_utils.h"
 
 int main (int argc, char** argv)
 {

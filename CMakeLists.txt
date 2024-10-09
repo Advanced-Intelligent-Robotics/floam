@@ -68,7 +68,7 @@ add_executable(floam_node
                src/laserMapping.cpp  
                src/lidarOptimization.cpp  
                src/lidar.cpp 
-               include/utils.h)
+               include/floam_utils.h)
 target_link_libraries(floam_node 
                       ${EIGEN3_LIBRARIES} 
                       ${catkin_LIBRARIES} 

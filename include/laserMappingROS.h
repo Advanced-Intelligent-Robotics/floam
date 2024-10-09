@@ -25,7 +25,7 @@
 //local lib
 #include "laserMapping.h"
 #include "lidar.h"
-#include "utils.h"
+#include "floam_utils.h"
 
 
 class LaserMappingROS{

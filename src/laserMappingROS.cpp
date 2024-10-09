@@ -18,7 +18,7 @@ LaserMappingROS::LaserMappingROS(std::mutex* mtx,ros::NodeHandle* nh, ros::NodeH
   laserMapping_.init(map_resolution_);
 
   // 2. setup publisher
-  map_pub_ = nh_->advertise<sensor_msgs::PointCloud2>("loam_map", 100);
+  map_pub_ = nh_->advertise<sensor_msgs::PointCloud2>("floam_map", 10);
 
   // 3. start process thread
   process_thread_ = std::thread(&LaserMappingROS::process,this);
