@@ -43,8 +43,8 @@ void OdomEstimationClass::updatePointsToMap(const pcl::PointCloud<pcl::PointXYZI
   pcl::PointCloud<pcl::PointXYZI>::Ptr downsampledEdgeCloud(new pcl::PointCloud<pcl::PointXYZI>());
   pcl::PointCloud<pcl::PointXYZI>::Ptr downsampledSurfCloud(new pcl::PointCloud<pcl::PointXYZI>());
   downSamplingToMap(edge_in,downsampledEdgeCloud,surf_in,downsampledSurfCloud);
-  //ROS_WARN("point nyum%d,%d",(int)downsampledEdgeCloud->points.size(), (int)downsampledSurfCloud->points.size());
-  if(laserCloudCornerMap->points.size()>10 && laserCloudSurfMap->points.size()>50){
+  ROS_INFO("point num: %d,%d",(int)downsampledEdgeCloud->points.size(), (int)downsampledSurfCloud->points.size());
+  if(laserCloudCornerMap->points.size()>10 && laserCloudSurfMap->points.size()>10){
     kdtreeEdgeMap->setInputCloud(laserCloudCornerMap);
     kdtreeSurfMap->setInputCloud(laserCloudSurfMap);
     for (int iterCount = 0; iterCount < optimization_count; iterCount++){
@@ -68,7 +68,7 @@ void OdomEstimationClass::updatePointsToMap(const pcl::PointCloud<pcl::PointXYZI
         ceres::Solve(options, &problem, &summary);
     }
   }else{
-      printf("not enough points in map to associate, map error");
+      ROS_WARN("not enough points in map to associate, map error");
   }
   odom = Eigen::Isometry3d::Identity();
   odom.linear() = q_w_curr.toRotationMatrix();
